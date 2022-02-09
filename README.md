@@ -16,7 +16,7 @@ With a compatible instance file, solve the MMR-BIP from a Python script:
 from mmrbipy import Model
 
 # build a model from instance file
-mod = Model(problem='KP', filename='instance/KP/1-70-01-45-20')
+mod = Model(problem='kp', filename='../instance/KP/1-70-01-45-20')
 
 # solve by iDS algorithm with best-scenario constraints
 mod.solve(algorithm='ids-b', timelimit=100)

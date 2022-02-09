@@ -89,7 +89,11 @@ class Model():
         with open(filename) as file:
             lines = file.readlines()
         lines = [line.replace("\n", "").replace("\r", "").rstrip().replace("\t", " ") for line in lines]
-
+        
+        # Validate problem type
+        problem = problem.lower()
+        if problem not in {'kp', 'mkp', 'gap', 'scp', 'bip'}:
+            raise Exception("Problem type is not correct")
         # Store the instance date in class object
         self.a, self.b, self.c_upp, self.c_low = dict(), dict(), dict(), dict()
         # Read instance and translate it to a standard BIP
