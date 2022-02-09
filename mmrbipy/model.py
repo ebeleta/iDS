@@ -177,13 +177,15 @@ class Model():
             for i,v in enumerate(lines.pop(0).split()):
                 self.b[i] = int(v)
     
-    def solve(self, algorithm: str, timelimit: int = 3600):
+    def solve(self, algorithm: str = 'ids-b', timelimit: int = 3600):
         """Solve the problem
 
         Args:
-            algorithm (str): algorithm name
+            algorithm (str): algorithm name. Defaults ids-b.
             timelimit (int, optional): time limit. Defaults 3600.
         """
+        if algorithm not in {'fix', 'bc', 'ds', 'ids-h', 'ids-b'}:
+            raise Exception("Algorithm type is not correct")
         # Set time limit
         self.timelimit = timelimit
         # Set start time
