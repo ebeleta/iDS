@@ -10,7 +10,7 @@ pip install mmrbipy
 
 ## Using mmrbipy
 
-With a compatible instance file, solve the MMR-BIP from a Python script:
+With a compatible instance file, mmrbipy solves the MMR-BIP from a Python script:
 
 ```python
 from mmrbipy import Model
@@ -31,16 +31,16 @@ mod.write("result.txt")
 
 _Note: Benchmark instances for_
 
-- min-max regret knapsack problem
-- min-max regret multidimensional knapsack problem
-- min-max regret set covering problem
-- min-max regret generalized assignment problem
+- _min-max regret knapsack problem_
+- _min-max regret multidimensional knapsack problem_
+- _min-max regret set covering problem_
+- _min-max regret generalized assignment problem_
 
 _are available in the `instance` directory on the [project's homepage](https://github.com/ebereta/iDS/). For easy access to the example files, we recommend cloning the repository._
 
 ## Algorithm
 
-To solve the MMR-BIP, mmrbipy provides four algorithms:
+To solve the MMR-BIP, mmrbipy provides five algorithms:
 - fixed scenario algorithm (*fix*);
 - branch-and-cut algorithm (*bc*);
 - dual substitution algorithm (*ds*);

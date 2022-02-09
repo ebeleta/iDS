@@ -8,9 +8,8 @@ DESCRIPTION = "mmrbipy: A solver for the min-max regret binary integer programmi
 NAME = 'mmrbipy'
 AUTHOR = 'Wei Wu'
 AUTHOR_EMAIL = 'goi@shizuoka.ac.jp'
-URL = 'https://github.com/ebereta/iDS'
+URL = 'https://github.com/ebeleta/iDS'
 LICENSE = 'MIT'
-DOWNLOAD_URL = 'https://github.com/ebereta/iDS'
 VERSION = '0.1.2'
 PYTHON_REQUIRES = ">=3.6"
 
@@ -39,7 +38,6 @@ setuptools.setup(
     license=LICENSE,
     url=URL,
     version=VERSION,
-    download_url=DOWNLOAD_URL,
     python_requires=PYTHON_REQUIRES,
     install_requires=INSTALL_REQUIRES,
     packages=setuptools.find_packages(),
