@@ -11,7 +11,7 @@ AUTHOR_EMAIL = 'goi@shizuoka.ac.jp'
 URL = 'https://github.com/ebereta/iDS'
 LICENSE = 'MIT'
 DOWNLOAD_URL = 'https://github.com/ebereta/iDS'
-VERSION = '0.1.1'
+VERSION = '0.1.2'
 PYTHON_REQUIRES = ">=3.6"
 
 INSTALL_REQUIRES = ['gurobipy']
