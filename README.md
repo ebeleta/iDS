@@ -15,18 +15,34 @@ With a compatible instance file, mmrbipy solves the MMR-BIP from a Python script
 ```python
 from mmrbipy import Model
 
-# build a model from instance file
+# Generate a model from instance file
 mod = Model(problem='kp', filename='../instance/KP/1-70-01-45-20')
 
-# solve by iDS algorithm with best-scenario constraints
+# Solve by iDS algorithm with best-scenario constraints
 mod.solve(algorithm='ids-b', timelimit=100)
 
-# print results
+# Print results
 print("objective value: {}".format(mod.objval))
 print("time to best: {:.2f}".format(mod.ttb))
 
-# write the results to file
+# Write the results to file
 mod.write("result.txt")
+```
+## Model
+To solve the MMR-BIP, mmrbipy provides five types of instance format:
+
+- min-max binary integer programming problem (*bip*)
+- min-max regret knapsack problem (*kp*)
+- min-max regret multidimensional knapsack problem (*mkp*)
+- min-max regret set covering problem (*scp*)
+- min-max regret generalized assignment problem (*gap*)
+
+See [instance page](https://github.com/ebeleta/iDS/instance) for the details of each type
+
+### Set problem type in constructor of _Model_ class
+```python
+# Generate a model from instance file
+mod = Model(problem='kp', filename='../instance/KP/1-70-01-45-20')
 ```
 
 _Note: Benchmark instances for_
@@ -46,6 +62,12 @@ To solve the MMR-BIP, mmrbipy provides five algorithms:
 - dual substitution algorithm (*ds*);
 - iterated dual substitution algorithm with best-scenario constraints (*ids-b*);
 - iterated dual substitution algorithm with Hamming-distance constraints (*ids-h*).
+
+### Set algorithm type in _solve_ function
+```python
+# Solve by iDS algorithm with best-scenario constraints
+mod.solve(algorithm='ids-b', timelimit=100)
+```
 
 _Note: The implement are based on [gurobypy](https://pypi.org/project/gurobipy/)._
 
