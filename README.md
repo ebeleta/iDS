@@ -36,7 +36,7 @@ _Note: Benchmark instances for_
 - _min-max regret set covering problem_
 - _min-max regret generalized assignment problem_
 
-_are available in the `instance` directory on the [project's homepage](https://github.com/ebereta/iDS/). For easy access to the example files, we recommend cloning the repository._
+_are available in the `instance` directory on the [project's homepage](https://github.com/ebeleta/iDS/). For easy access to the example files, we recommend cloning the repository._
 
 ## Algorithm
 
