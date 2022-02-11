@@ -37,7 +37,7 @@ To solve the MMR-BIP, mmrbipy provides five types of instance format:
 - min-max regret set covering problem (*scp*)
 - min-max regret generalized assignment problem (*gap*)
 
-See [instance page](https://github.com/ebeleta/iDS/instance) for the details of each type
+See [instance page](https://github.com/ebeleta/iDS/tree/main/instance) for the details of each type
 
 ### Set problem type in constructor of _Model_ class
 ```python
