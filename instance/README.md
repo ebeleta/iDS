@@ -5,8 +5,6 @@
 
 There are 486 data files.
   
-The problem in each data file have an associated notation as follows:
-  
 An MMR-KP instance denoted by **_v-ww-xx-yy-zz_** indicates that it is generated based on type **_v_** KP instance with **_ww_** items, **_xx = 100 g_**, and the max **_zz_**%-uncertainty on profit intervals.
 
 The format for each of these data files is:
@@ -22,10 +20,8 @@ maximum profit of item j (j=1,...,n)
 > "Wu, W., Iori, M., Martello, S., & Yagiura, M. (2020). An Iterated Dual Substitution Approach for Binary Integer Programming Problems under the Min-Max Regret Criterion. arXiv preprint arXiv:2012.07530."
 
 There are 270 data files.
-  
-The problem in each data file have an associated notation as follows:
 
-An MMR-MKP instance denoted by **_wwxxxyy-zz_** is generated from the **_zz_**th MKP instance with **_ww_**-dimensions, **_xxx_**-items and the max **_yy_**%-uncertainty on profit intervals.
+An MMR-MKP instance denoted by **_wwxxxyy-zz_** is generated from the **_zz_**-th MKP instance with **_ww_**-dimensions, **_xxx_**-items and the max **_yy_**%-uncertainty on profit intervals.
 
 The format for each of these data files is:
 ~~~
@@ -42,8 +38,8 @@ resource capacity of dimension i (i=1,...,m)
 
 There are 225 data files.
 
-An \mbox{MMR-SCP} instance denoted by **_Bxyyzz_** indicates a Type-**_B_** instance whose corresponding SCP instance is the **_yy_**th instance in family **_x_** from the OR-Library with the max **_zz_**%-uncertainty on cost intervals,
-while **_Mxyy-z_**}'' (or **_Kxyy-z_**) stands for the **_z_**_th Type-**_M_** (or Type-K) instance whose corresponding SCP instance is the **_yy_**th instance in family **_x_**.
+An MMR-SCP instance denoted by **_Bxyyzz_** indicates a Type-**_B_** instance whose corresponding SCP instance is the **_yy_**-th instance in family **_x_** from the OR-Library with the max **_zz_**%-uncertainty on cost intervals,
+while **_Mxyy-z_**}'' (or **_Kxyy-z_**) stands for the **_z_**_th Type-**_M_** (or Type-K) instance whose corresponding SCP instance is the **_yy_**-th instance in family **_x_**.
 
 The format for each of these data files is:
 ~~~
@@ -65,7 +61,7 @@ There are 300 data files and 60 files for each type.
   
 The problem in each data file have an associated notation as follows:
   
-An MMR-GAP instance denoted by **_Txxyyzz-i_** indicates the **_i_**th instance in a group of problems of type **_T_** with **_xx_**-agents, **_yy_**-jobs and the max **_zz_**%-uncertainty on cost intervals.
+An MMR-GAP instance denoted by **_Txxyyzz-i_** indicates the **_i_**-th instance in a group of problems of type **_T_** with **_xx_**-agents, **_yy_**-jobs and the max **_zz_**%-uncertainty on cost intervals.
 
 The format for each of these data files is:
 ~~~
