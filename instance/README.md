@@ -8,10 +8,10 @@ There are 486 data files.
 The problem in each data file have an associated notation as follows:
   
 `v-ww-xx-yy-zz` denotes that this is
-- generated based on type _v_ KP instance  
+- generated based on type **_v_** KP instance  
 - with _ww_ items
-- _xx=100$$\gamma$$_ and  
-- _zz=100delta_.  
+- _xx = 100 g_ and  
+- _zz = 100 d_.  
 $$\delta$$
 The format for each of these data files is:
 ~~~
