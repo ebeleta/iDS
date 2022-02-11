@@ -7,13 +7,12 @@ There are 486 data files.
   
 The problem in each data file have an associated notation as follows:
   
-3-50-10-55-20: denotes that this is the 3rd instance  
-			in a group of problems  
-			with 10-dimensions, 100-items and  
-			the max 30%-uncertainty on profit intervals.  
-
-The \mbox{MMR-KP} instances are denoted by 'v-ww-xx-yy-zz,' where $v=\textrm{type}$, $ww=n$, $xx=\bar{R}/1000$, $yy=100\gamma$, and $zz=100\delta$.
-
+`v-ww-xx-yy-zz` denotes that this is
+- generated based on type _v_ KP instance  
+- with _ww_ items
+- _xx=100$$\gamma$$_ and  
+- _zz=100delta_.  
+$$\delta$$
 The format for each of these data files is:
 ~~~
 number of dimensions (m)	number of items (n)
@@ -31,10 +30,11 @@ There are 270 data files.
   
 The problem in each data file have an associated notation as follows:
   
- 1010030-03: denotes that this is the 3rd instance  
-			 in a group of problems  
-			 with 10-dimensions, 100-items and  
-			 the max 30%-uncertainty on profit intervals.  
+`1010030-03` denotes that this is
+- the 3rd instance  
+- in a group of problems  
+- with 10-dimensions, 100-items and  
+- the max 30%-uncertainty on profit intervals.  
 
 The format for each of these data files is:
 ~~~
@@ -53,10 +53,11 @@ There are 300 data files and 60 files for each type.
   
 The problem in each data file have an associated notation as follows:
   
- c054025-3.dat:	denotes that this is the 3rd instance  
-		in a group of problems of type c  
-		with 5-agents, 40-jobs and  
-		the max 25%-uncertainty on cost intervals.
+`c054025-3.dat` denotes that this is
+- the 3rd instance  
+- in a group of problems of type c  
+- with 5-agents, 40-jobs and  
+- the max 25%-uncertainty on cost intervals.
 
 The format for each of these data files is:
 ~~~
