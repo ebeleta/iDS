@@ -39,7 +39,7 @@ resource capacity of dimension i (i=1,...,m)
 There are 225 data files.
 
 An MMR-SCP instance denoted by **_Bxyyzz_** indicates a Type-**_B_** instance whose corresponding SCP instance is the **_yy_**-th instance in family **_x_** from the OR-Library with the max **_zz_**%-uncertainty on cost intervals,
-while **_Mxyy-z_**}'' (or **_Kxyy-z_**) stands for the **_z_**_th Type-**_M_** (or Type-K) instance whose corresponding SCP instance is the **_yy_**-th instance in family **_x_**.
+while **_Mxyy-z_** (or **_Kxyy-z_**) stands for the **_z_**_th Type-**_M_** (or Type-K) instance whose corresponding SCP instance is the **_yy_**-th instance in family **_x_**.
 
 The format for each of these data files is:
 ~~~
@@ -74,4 +74,19 @@ for each agent i (i=1,...,m) in turn:
 for each agent i (i=1,...,m) in turn:
     resource consumed in allocating job j to agent i (j=1,...,n)
 resource capacity of agent i (i=1,...,m)
+~~~
+
+## MMR-BIP instance format
+The format for each of these data files is:
+~~~
+optimization sense ('max' or 'min')
+number of constraints (m)
+number of variables (n)
+for each variable j (j=1,...,n) in turn:
+    minimum coefficient of select variable j (j=1,...,n)
+for each variable j (j=1,...,n) in turn:
+    maximum coefficient of select variable j (j=1,...,n)
+for each constraint i (i=1,...,m) in turn:
+    resource consumed in selecting variable j (j=1,...,n)
+resource capacity of constraint i (i=1,...,m)
 ~~~

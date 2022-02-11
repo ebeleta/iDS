@@ -149,7 +149,7 @@ class Model():
         elif problem == 'scp':
             # Read SCP benchmark instance
             self.sense = GRB.MINIMIZE
-            self.m, n = [int(item) for item in lines.pop(0).split()]
+            self.m, _ = int(lines.pop(0)), int(lines.pop(0))
             for j in range(n):
                 self.c_low[j], self.c_upp[j] = [int(item) for item in lines.pop(0).split()]
             self.a = {(i,j): 0 for i in range(self.m) for j in range(n)}
@@ -166,7 +166,7 @@ class Model():
                 self.sense = GRB.MINIMIZE
             elif sense == 'MAX':
                 self.sense = GRB.MAXIMIZE
-            self.m = int(lines.pop(0))
+            self.m, _ = [int(item) for item in lines.pop(0).split()]
             for j,v in enumerate(lines.pop(0).split()):
                 self.c_low[j] = int(v)
             for j,v in enumerate(lines.pop(0).split()):
