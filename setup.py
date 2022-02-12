@@ -10,7 +10,7 @@ AUTHOR = 'Wei Wu'
 AUTHOR_EMAIL = 'goi@shizuoka.ac.jp'
 URL = 'https://github.com/ebeleta/iDS'
 LICENSE = 'MIT'
-VERSION = '0.1.4'
+VERSION = '0.1.5'
 PYTHON_REQUIRES = ">=3.6"
 
 INSTALL_REQUIRES = ['gurobipy']
