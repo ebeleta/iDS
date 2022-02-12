@@ -149,7 +149,7 @@ class Model():
         elif problem == 'scp':
             # Read SCP benchmark instance
             self.sense = GRB.MINIMIZE
-            self.m, _ = int(lines.pop(0)), int(lines.pop(0))
+            self.m, n = [int(item) for item in lines.pop(0).split()]
             for j in range(n):
                 self.c_low[j], self.c_upp[j] = [int(item) for item in lines.pop(0).split()]
             self.a = {(i,j): 0 for i in range(self.m) for j in range(n)}
@@ -186,6 +186,7 @@ class Model():
         """
         if algorithm not in {'fix', 'bc', 'ds', 'ids-h', 'ids-b'}:
             raise Exception("Algorithm type is not correct")
+        self.algorithm = algorithm
         # Set time limit
         self.timelimit = timelimit
         # Set start time
