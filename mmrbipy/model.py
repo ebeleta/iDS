@@ -223,6 +223,8 @@ class Model():
             # If the model is infeasible, an exact solution is obtained.
             if model.status == GRB.INFEASIBLE:
                 break
+            elif model.status != GRB.OPTIMAL and model.status != GRB.Status.TIME_LIMIT and model.status != GRB.SUBOPTIMAL and model.status != GRB.SOLUTION_LIMIT:
+                raise Exception("Unable exactly solve main problem (Gurobi status: {})".format(model.status))
             # Compute the regret of the current solution
             sol = {j: 1 if x[j].x > 0.5 else 0 for j in x}
             regret = self.evaluate(sol)
