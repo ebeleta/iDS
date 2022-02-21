@@ -221,10 +221,9 @@ class Model():
             # Log the iteration number
             ite_num += 1
             # If the model is infeasible, an exact solution is obtained.
-            if model.status == GRB.INFEASIBLE:
-                break
-            elif model.status != GRB.OPTIMAL and model.status != GRB.Status.TIME_LIMIT and model.status != GRB.SUBOPTIMAL and model.status != GRB.SOLUTION_LIMIT:
-                raise Exception("Unable to obtain feasible solution to the master problem (Gurobi status: {}, #ite: {})".format(model.status, ite_num))
+            if model.status == GRB.INFEASIBLE: break
+            # If no feasible solution found, terminate the approach
+            if model.solCount <= 0: break
             # Compute the regret of the current solution
             sol = {j: 1 if x[j].x > 0.5 else 0 for j in x}
             regret = self.evaluate(sol)
