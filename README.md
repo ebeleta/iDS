@@ -56,7 +56,7 @@ _are available in the `instance` directory on the [project's homepage](https://g
 
 ## Algorithm
 
-To solve the MMR-BIP, mmrbipy provides 8 algorithms:
+To solve the MMR-BIP, mmrbipy provides the following algorithms:
 - fixed scenario algorithm (*fix*);
 - Benders-like decomposition algorithm (*bd*);
 - branch-and-cut algorithm with Benders cuts (*bc*);
