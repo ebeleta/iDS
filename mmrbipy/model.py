@@ -68,8 +68,8 @@ def callback_ds_cut(model, where):
     # calculate the regret for the current solution
     regret = obj.evaluate(x_sol)
 
-    if regret < obj.obj - EPSN:
-        obj.obj, obj.sol = regret, x_sol
+    if regret < obj.objval - EPSN:
+        obj.objval, obj.sol = regret, x_sol
         obj.ttb = run_time
         print("obj = {},\ttime = {:.3f}".format(regret, run_time))
     
@@ -220,7 +220,7 @@ class Model():
         elif algorithm[:3] == 'ids':
             self.algo_ids(cut_type=algorithm[-1])
         elif algorithm[:4] == 'bcds':
-            self.obj = sum(self.c_upp.values())
+            self.objval = sum(self.c_upp.values())
             self.algo_bcds(cut_type=algorithm[-1])
         self.algo = algorithm
 
