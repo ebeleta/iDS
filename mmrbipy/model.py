@@ -17,8 +17,8 @@ def mipsol(model, where):
     if where == GRB.Callback.MIPSOL:
         model._ttb = model.cbGet(GRB.Callback.RUNTIME)
 
-def lazy_cut(model, where):
-    """Callback to add a cut for branch-and-cut framework"""
+def callback_benders_cut(model, where):
+    """Callback to add a cut for branch-and-cut framework for benders model"""
     # Excute the function when an incumbent is found
     if where != GRB.Callback.MIPSOL:
         return
@@ -27,6 +27,7 @@ def lazy_cut(model, where):
     r_sol = model.cbGetSolution(model._r)
     # Obtain the Model object
     obj = model._obj
+    ttb = model.cbGet(GRB.Callback.RUNTIME)
     
     # Generate the worst-case scenario for the solution
     N = obj.c_low.keys()
@@ -36,32 +37,46 @@ def lazy_cut(model, where):
         c_wst = {j: (obj.c_upp[j] - obj.c_low[j]) * x_sol[j] + obj.c_low[j] for j in N}
 
     # Solve BIP under the worst-case scenario
-    remain_time = obj.timelimit-model.cbGet(GRB.Callback.RUNTIME)
+    remain_time = obj.timelimit - ttb
     if remain_time <= 0:
         return
     res = obj.solve_bip(c=c_wst, timelimit=remain_time)
-
-    if obj.sense == GRB.MAXIMIZE and res['obj_bd'] > r_sol + EPSN:
-        # Add a cut
-        rhs = gp.LinExpr()
-        for j in N:
-            if res['sol'][j] > 0.5:
-                rhs += obj.c_upp[j]
-                if obj.c_upp[j] - obj.c_low[j] > EPSN:
-                    rhs -= (obj.c_upp[j] - obj.c_low[j]) * model._x[j]
-        model.cbLazy(model._r >= rhs)
-    elif obj.sense == GRB.MINIMIZE and res['obj_bd'] < r_sol - EPSN:
-        # Add a cut
-        rhs = gp.LinExpr()
-        for j in N:
-            if res['sol'][j] > 0.5:
-                rhs += obj.c_low[j]
-                if obj.c_upp[j] - obj.c_low[j] > EPSN:
-                    rhs += (obj.c_upp[j] - obj.c_low[j]) * model._x[j]
-        model.cbLazy(model._r <= rhs)
+    if obj.sense == GRB.MAXIMIZE and res['obj_bd'] > r_sol + EPSN or obj.sense == GRB.MINIMIZE and res['obj_bd'] < r_sol - EPSN:
+        cut = obj.gen_bd_cut(x=model._x, r=model._r, sol=res['sol'])
+        model.cbLazy(cut)
     else:
         # If the incumbent is feasible, stamp the runtime
-        model._ttb = model.cbGet(GRB.Callback.RUNTIME)
+        model._ttb = ttb
+        objval = model.cbGet(GRB.Callback.MIPSOL_OBJ)
+        bound = model.cbGet(GRB.Callback.MIPSOL_OBJBND)
+        print("obj = {},\tbound = {},\ttime = {:.3f}".format(int(objval+0.5), int(bound+1-EPSN), model._ttb))
+
+
+def callback_ds_cut(model, where):
+    """Callback to add a cut for branch-and-cut framework for ds model"""
+    # Excute the function when an incumbent is found
+    if where != GRB.Callback.MIPSOL:
+        return
+    # Obtain the incumbent solution
+    x_sol = model.cbGetSolution(model._x)
+    x_sol = {j: 1 if x_sol[j] > 0.5 else 0 for j in x_sol}
+    
+    # Obtain the Model object
+    obj = model._obj
+    run_time = model.cbGet(GRB.Callback.RUNTIME)
+    
+    # calculate the regret for the current solution
+    regret = obj.evaluate(x_sol)
+
+    if regret < obj.obj - EPSN:
+        obj.obj, obj.sol = regret, x_sol
+        obj.ttb = run_time
+        print("obj = {},\ttime = {:.3f}".format(regret, run_time))
+    
+    # Add a constraint based on the current solution
+    cut = obj.gen_ds_cut(x=model._x, sol=x_sol, cut_type=model._cut_type)
+    model.cbLazy(cut)
+
 
 class Model():
     """A class to model and solve a BIP problem instance.
@@ -186,7 +201,7 @@ class Model():
             algorithm (str): algorithm name. Defaults fix.
             timelimit (int, optional): time limit. Defaults 30.
         """
-        if algorithm not in {'fix', 'bc', 'ds', 'ids-h', 'ids-b'}:
+        if algorithm not in {'fix', 'bc', 'bd', 'ds', 'ids-h', 'ids-b', 'bcds-h', 'bcds-b'}:
             raise Exception("Algorithm type is not correct")
         self.algorithm = algorithm
         # Set time limit
@@ -200,9 +215,41 @@ class Model():
             self.algo_ds()
         elif algorithm == 'bc':
             self.algo_bc()
+        elif algorithm == 'bd':
+            self.algo_bd()
         elif algorithm[:3] == 'ids':
             self.algo_ids(cut_type=algorithm[-1])
+        elif algorithm[:4] == 'bcds':
+            self.obj = sum(self.c_upp.values())
+            self.algo_bcds(cut_type=algorithm[-1])
         self.algo = algorithm
+
+    def algo_fix(self):
+        """Solve BIP under median scenario and evaluate the obtained solution under its worst-case scenario
+        """
+        # Generate median scenario
+        c = {j: float(self.c_upp[j] + self.c_low[j])/2 for j in self.c_upp}
+        # Solve BIP under median scenario
+        res = self.solve_bip(c=c, timelimit=self.timelimit)
+        # Evaluate the obtained solution under its worst-case scenario
+        if res:
+            self.sol = res['sol']
+            self.ttb = res['ttb']
+            self.objval = self.evaluate(res['sol'])
+
+    def algo_ds(self):
+        """Solve MMR-BIP by dual substitution approach
+        """
+        # Generate GUROBI model
+        model, x = self.set_ds_model(timelimit=self.timelimit)
+        # Use GUROBI to optimize
+        model.optimize(mipsol)
+        # Store results
+        if model.status == GRB.Status.OPTIMAL or model.status == GRB.Status.TIME_LIMIT:
+            self.sol = {j: 1 if x[j].x > 0.5 else 0 for j in x}
+            self.ttb = model._ttb
+            # Evaluate the obtained solution under its worst-case scenario
+            self.objval = self.evaluate(self.sol)
 
     def algo_ids(self, cut_type: str):
         """Solve the problem by iDS algorithms
@@ -233,36 +280,10 @@ class Model():
             if regret < best_obj - EPSN:
                 best_obj, best_sol, best_ite = regret, sol, ite_num
                 best_time = self.timelimit - time_remain + model._ttb
-                print("#ite = {},\tobj = {}\ttime = {:.3f}".format(best_ite, best_obj, best_time))
+                print("#ite = {},\tobj = {},\ttime = {:.3f}".format(best_ite, best_obj, best_time))
             # Add a constraint based on the current solution
-            lhs = gp.LinExpr()
-            if cut_type == 'h':
-                # Cut using Hamming distance 1
-                rhs = 1
-                for j in x:
-                    if x[j].x < 0.5:
-                        lhs += x[j]
-                    else:
-                        lhs -= x[j]
-                        rhs -= 1
-                model.addConstr((lhs >= rhs), name='ITE_CON_'+str(ite_num))
-            elif cut_type == 'b':
-                # Cut using Best-Scenario Lemma
-                rhs = 1
-                for j in x:
-                    if self.sense == GRB.MAXIMIZE:
-                        if x[j].x < 0.5:
-                            lhs += self.c_upp[j] * x[j]
-                        else:
-                            lhs += self.c_low[j] * x[j]
-                            rhs += self.c_low[j]
-                    else:
-                        if x[j].x < 0.5:
-                            lhs -= self.c_low[j] * x[j]
-                        else:
-                            lhs -= self.c_upp[j] * x[j]
-                            rhs -= self.c_upp[j]
-                model.addConstr((lhs >= rhs), name='ITE_CON_'+str(ite_num))
+            cut = self.gen_ds_cut(x=x, sol=sol, cut_type=cut_type)
+            model.addConstr(cut, name='ITE_CON_'+str(ite_num))
             # Update remaining time
             time_remain = self.timelimit - (time.time() - self.starttime)
         # Store results
@@ -272,62 +293,100 @@ class Model():
         self.bes_ite = best_ite
         self.num_ite = ite_num
 
-    def algo_fix(self):
-        """Solve BIP under median scenario and evaluate the obtained solution under its worst-case scenario
-        """
-        # Generate median scenario
-        c = {j: float(self.c_upp[j] + self.c_low[j])/2 for j in self.c_upp}
-        # Solve BIP under median scenario
-        res = self.solve_bip(c=c, timelimit=self.timelimit)
-        # Evaluate the obtained solution under its worst-case scenario
-        if res:
-            self.sol = res['sol']
-            self.ttb = res['ttb']
-            self.objval = self.evaluate(res['sol'])
+    def algo_bcds(self, cut_type: str):
+        """Solve the problem by iDS under branch-and-cut framework
 
-    def algo_ds(self):
-        """Solve MMR-BIP by dual substitution approach
+        Args:
+            cut_type (str): cut type using in iDS
         """
         # Generate GUROBI model
         model, x = self.set_ds_model(timelimit=self.timelimit)
+        # Store objects for callback
+        model._x = x
+        model._obj = self
+        model._cut_type = cut_type
         # Use GUROBI to optimize
-        model.optimize(mipsol)
+        model.optimize(callback_ds_cut)
+
+    def algo_bd(self):
+        """Solve BIP by Benders-like decomposition
+        """
+        """Solve the problem by iDS algorithms
+
+        Args:
+            cut_type (str): cut type using in iDS
+        """
+        # Initialize local variables
+        time_remain, ite_num = self.timelimit, 0
+        best_obj, best_ite, best_time, best_sol = sum(self.c_upp.values()), -1, None, None
+        # Initialize the model as a BD model
+        model, x, r = self.set_bd_model()
+
+        while time_remain > 0:
+            # Solve the current DS model
+            model.Params.timeLimit = time_remain
+            model.optimize(mipsol)
+            # Store lower bound
+            self.lb = int(model.objBound + 1 - EPSN)
+            # Log the iteration number
+            ite_num += 1
+            # If the model is infeasible, an exact solution is obtained.
+            if model.status == GRB.INFEASIBLE: break
+            # If no feasible solution found, terminate the approach
+            if model.solCount <= 0: break
+            # Compute the regret of the current solution
+            sol = {j: 1 if x[j].x > 0.5 else 0 for j in x}
+
+            # Prepare worst-case scenario
+            if self.sense == GRB.MAXIMIZE:
+                c_wst = {j: self.c_low[j] if sol[j] > 0.5 else self.c_upp[j] for j in self.c_upp}
+            else:
+                c_wst = {j: self.c_low[j] if sol[j] < 0.5 else self.c_upp[j] for j in self.c_upp}
+            # Solve subproblem under worst scenario
+            res = self.solve_bip(c=c_wst)
+            # Terminate if an optimal solution is found
+            if self.sense == GRB.MAXIMIZE and res['obj_bd'] - EPSN < r.x or self.sense == GRB.MINIMIZE and res['obj_bd'] + EPSN > r.x:
+                best_obj, best_sol, best_ite = self.lb, sol, ite_num
+                best_time = self.timelimit - time_remain + model._ttb
+                print("#ite = {},\tbound = {},\tobj = {},\ttime = {:.3f}".format(best_ite, self.lb, best_obj, best_time))
+                break
+
+            # Calculate the regret for the obtained solution
+            val_sol = sum(c_wst[j] * sol[j] for j in self.c_upp)
+            if self.sense == GRB.MAXIMIZE:
+                regret = int(res['obj_bd'] - val_sol + 0.5)
+            else:
+                regret = int(val_sol - res['obj_bd'] + 0.5)
+            
+            # Update the best if a smaller regret is obtained
+            if regret < best_obj - EPSN:
+                best_obj, best_sol, best_ite = regret, sol, ite_num
+                best_time = self.timelimit - time_remain + model._ttb
+                print("#ite = {},\tbound = {},\tobj = {},\ttime = {:.3f}".format(best_ite, self.lb, best_obj, best_time))
+            
+            # Add a constraint based on the current solution
+            cut = self.gen_bd_cut(x=x, r=r, sol=res['sol'])
+            model.addConstr(cut, name='ITE_CON_'+str(ite_num))
+            # Update remaining time
+            time_remain = self.timelimit - (time.time() - self.starttime)
         # Store results
-        if model.status == GRB.Status.OPTIMAL or model.status == GRB.Status.TIME_LIMIT:
-            self.sol = {j: 1 if x[j].x > 0.5 else 0 for j in x}
-            self.ttb = model._ttb
-            # Evaluate the obtained solution under its worst-case scenario
-            self.objval = self.evaluate(self.sol)
+        self.objval = int(best_obj + EPSN)
+        self.ttb = best_time
+        self.sol = best_sol
+        self.bes_ite = best_ite
+        self.num_ite = ite_num
 
     def algo_bc(self):
         """Solve BIP by branch-and-cut approach
         """
-        N, M = self.c_low.keys(), range(self.m)
-        # Build model
-        model = gp.Model('bc')
-        # Define variables
-        x = {j: model.addVar(vtype=GRB.BINARY, name='x[{}]'.format(j)) for j in N}
-        r = model.addVar(vtype=GRB.CONTINUOUS, name='lambda', ub=sum(self.c_upp.values()))
-        model.update()
-        # Objective function
-        if self.sense == GRB.MAXIMIZE:
-            model.setObjective(r - gp.quicksum(self.c_low[j] * x[j] for j in N), GRB.MINIMIZE)
-        else:
-            model.setObjective(gp.quicksum(self.c_upp[j] * x[j] for j in N) - r, GRB.MINIMIZE)
-        # Add constraints
-        model.addConstrs((gp.quicksum(self.a[i,j] * x[j] for j in N) <= self.b[i] for i in M), name='CAP_CON')
+        # Generate GUROBI model
+        model, x, r = self.set_bd_model(timelimit=self.timelimit)
         # Store objects for callback
         model._x = x
         model._r = r
         model._obj = self
-        # Parameter setting
-        model.Params.outputFlag = False
-        model.Params.threads = 1
-        model.Params.lazyConstraints = 1
-        model.Params.timeLimit = self.timelimit
-        model.Params.MIPGap = 0.0
         # Use GUROBI to optimize
-        model.optimize(lazy_cut)
+        model.optimize(callback_benders_cut)
         # Store results
         if model.status == GRB.Status.OPTIMAL or model.status == GRB.Status.TIME_LIMIT:
             self.lb = int(model.objBound + 1 - EPSN)
@@ -438,7 +497,88 @@ class Model():
         if timelimit:
             model.Params.timeLimit = timelimit
         return (model, x)
-    
+
+    def set_bd_model(self, timelimit: int=0) -> tuple:
+        """Build GUROBI model for Benders-like decomposition
+
+        Args:
+            timelimit (int, optional): time limit. No limits if leave it as default value 0.
+
+        Returns:
+            tuple: model, variable x and variable lambda.
+        """
+        N, M = self.c_low.keys(), range(self.m)
+        # Build model
+        model = gp.Model('bd')
+        # Define variables
+        x = {j: model.addVar(vtype=GRB.BINARY, name='x[{}]'.format(j)) for j in N}
+        r = model.addVar(vtype=GRB.CONTINUOUS, name='lambda', ub=sum(self.c_upp.values()))
+        model.update()
+        # Objective function
+        if self.sense == GRB.MAXIMIZE:
+            model.setObjective(r - gp.quicksum(self.c_low[j] * x[j] for j in N), GRB.MINIMIZE)
+        else:
+            model.setObjective(gp.quicksum(self.c_upp[j] * x[j] for j in N) - r, GRB.MINIMIZE)
+        # Add constraints
+        model.addConstrs((gp.quicksum(self.a[i,j] * x[j] for j in N) <= self.b[i] for i in M), name='CAP_CON')
+
+        model.Params.outputFlag = False
+        model.Params.threads = 1
+        model.Params.MIPGap = 0.0
+        model.Params.lazyConstraints = 1
+        if timelimit:
+            model.Params.timeLimit = timelimit
+        return (model, x, r)
+
+    def gen_ds_cut(self, x, sol, cut_type):
+        # generate a constraint based on the current solution
+        lhs = gp.LinExpr()
+        rhs = 1
+        if cut_type == 'h':
+            # Cut using Hamming distance 1
+            for j in x:
+                if sol[j] < 0.5:
+                    lhs += x[j]
+                else:
+                    lhs -= x[j]
+                    rhs -= 1
+        elif cut_type == 'b':
+            # Cut using Best-Scenario Lemma
+            for j in x:
+                if self.sense == GRB.MAXIMIZE:
+                    if sol[j] < 0.5:
+                        lhs += self.c_upp[j] * x[j]
+                    else:
+                        lhs += self.c_low[j] * x[j]
+                        rhs += self.c_low[j]
+                else:
+                    if sol[j] < 0.5:
+                        lhs -= self.c_low[j] * x[j]
+                    else:
+                        lhs -= self.c_upp[j] * x[j]
+                        rhs -= self.c_upp[j]
+        return lhs >= rhs
+
+
+
+    def gen_bd_cut(self, x, r, sol):
+        # generate a Benders constraint based on the current solution
+        rhs = gp.LinExpr()
+        if self.sense == GRB.MAXIMIZE:
+            for j in x:
+                if sol[j] > 0.5:
+                    rhs += self.c_upp[j]
+                    if self.c_upp[j] - self.c_low[j] > EPSN:
+                        rhs -= (self.c_upp[j] - self.c_low[j]) * x[j]
+            return r >= rhs
+        elif self.sense == GRB.MINIMIZE:
+            for j in x:
+                if sol[j] > 0.5:
+                    rhs += self.c_low[j]
+                    if self.c_upp[j] - self.c_low[j] > EPSN:
+                        rhs += (self.c_upp[j] - self.c_low[j]) * x[j]
+            return r <= rhs
+
     def write(self, filename: str):
         """write results to file
 
@@ -447,10 +587,10 @@ class Model():
         """
         with open(filename, 'w+') as file:
             file.write("objective value: {}\n".format(self.objval))
-            file.write("time to best: {:.2f}\n".format(self.ttb))
-            if self.algo == 'bc':
+            file.write("time to best: {:.3f}\n".format(self.ttb))
+            if self.algo == 'bc' or self.algo == 'bd':
                 file.write("lower bound: {}\n".format(self.lb))
-            if self.algo[:3] == 'ids':
+            if self.algo == 'bd' or self.algo[:3] == 'ids':
                 file.write("#iteration: {}\n".format(self.num_ite))
                 file.write("best iteration: {}\n".format(self.bes_ite))
             file.write("\nSolution (non-zero variable):\n")

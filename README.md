@@ -58,10 +58,13 @@ _are available in the `instance` directory on the [project's homepage](https://g
 
 To solve the MMR-BIP, mmrbipy provides five algorithms:
 - fixed scenario algorithm (*fix*);
-- branch-and-cut algorithm (*bc*);
+- Benders-like decomposition algorithm (*bd*);
+- branch-and-cut algorithm with Benders cuts (*bc*);
 - dual substitution algorithm (*ds*);
 - iterated dual substitution algorithm with best-scenario constraints (*ids-b*);
-- iterated dual substitution algorithm with Hamming-distance constraints (*ids-h*).
+- iterated dual substitution algorithm with Hamming-distance constraints (*ids-h*);
+- branch-and-cut algorithm for dual substitution model with best-scenario constraints (*bcds-b*);
+- branch-and-cut algorithm for dual substitution model with Hamming-distance constraints (*bcds-h*).
 
 ### Set algorithm type in _solve_ function
 ```python
@@ -73,4 +76,4 @@ _Note: The implement are based on [gurobypy](https://pypi.org/project/gurobipy/)
 
 ## Additional information
 
-For more information about the algorithms used in the solver, see [Wu et al. (2022)](https://arxiv.org/abs/2012.07530).
+For more information about the algorithms used in the solver, see [Wu et al. (2022)](https://doi.org/10.1287/ijoc.2022.1189).

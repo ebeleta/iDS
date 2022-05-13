@@ -59,8 +59,6 @@ resource capacity of agent i (i=1,...,m)
 
 There are 300 data files and 60 files for each type.
   
-The problem in each data file have an associated notation as follows:
-  
 An MMR-GAP instance denoted by **_Txxyyzz-i_** indicates the **_i_**-th instance in a group of problems of type **_T_** with **_xx_**-agents, **_yy_**-jobs and the max **_zz_**%-uncertainty on cost intervals.
 
 The format for each of these data files is:
