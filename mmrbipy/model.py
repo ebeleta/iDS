@@ -40,8 +40,9 @@ def callback_benders_cut(model, where):
     remain_time = obj.timelimit - ttb
     if remain_time <= 0:
         return
-    res = obj.solve_bip(c=c_wst, timelimit=remain_time)
-    if obj.sense == GRB.MAXIMIZE and res['obj_bd'] > r_sol + EPSN or obj.sense == GRB.MINIMIZE and res['obj_bd'] < r_sol - EPSN:
+    bound = r_sol + 1 if obj.sense == GRB.MAXIMIZE else r_sol - 1
+    res = obj.solve_bip(c=c_wst, timelimit=remain_time, bound=round(bound))
+    if res is not None:
         cut = obj.gen_bd_cut(x=model._x, r=model._r, sol=res['sol'])
         model.cbLazy(cut)
     else:
@@ -66,9 +67,9 @@ def callback_ds_cut(model, where):
     run_time = model.cbGet(GRB.Callback.RUNTIME)
     
     # calculate the regret for the current solution
-    regret = obj.evaluate(x_sol)
+    regret = obj.evaluate(sol=x_sol, incumbent=obj.objval)
 
-    if regret < obj.objval - EPSN:
+    if regret + EPSN < obj.objval:
         obj.objval, obj.sol = regret, x_sol
         obj.ttb = run_time
         print("obj = {},\ttime = {:.3f}".format(regret, run_time))
@@ -232,10 +233,10 @@ class Model():
         # Solve BIP under median scenario
         res = self.solve_bip(c=c, timelimit=self.timelimit)
         # Evaluate the obtained solution under its worst-case scenario
-        if res:
+        if res is not None:
             self.sol = res['sol']
             self.ttb = res['ttb']
-            self.objval = self.evaluate(res['sol'])
+            self.objval = self.evaluate(sol=res['sol'])
 
     def algo_ds(self):
         """Solve MMR-BIP by dual substitution approach
@@ -249,7 +250,7 @@ class Model():
             self.sol = {j: 1 if x[j].x > 0.5 else 0 for j in x}
             self.ttb = model._ttb
             # Evaluate the obtained solution under its worst-case scenario
-            self.objval = self.evaluate(self.sol)
+            self.objval = self.evaluate(sol=self.sol)
 
     def algo_ids(self, cut_type: str):
         """Solve the problem by iDS algorithms
@@ -275,9 +276,9 @@ class Model():
             if model.solCount <= 0: break
             # Compute the regret of the current solution
             sol = {j: 1 if x[j].x > 0.5 else 0 for j in x}
-            regret = self.evaluate(sol)
+            regret = self.evaluate(sol=sol, incumbent=best_obj)
             # Update the best if a smaller regret is obtained
-            if regret < best_obj - EPSN:
+            if regret + EPSN < best_obj:
                 best_obj, best_sol, best_ite = regret, sol, ite_num
                 best_time = self.timelimit - time_remain + model._ttb
                 print("#ite = {},\tobj = {},\ttime = {:.3f}".format(best_ite, best_obj, best_time))
@@ -343,9 +344,10 @@ class Model():
             else:
                 c_wst = {j: self.c_low[j] if sol[j] < 0.5 else self.c_upp[j] for j in self.c_upp}
             # Solve subproblem under worst scenario
-            res = self.solve_bip(c=c_wst)
+            bound = r.x + 1 if self.sense == GRB.MAXIMIZE else r.x - 1
+            res = self.solve_bip(c=c_wst, bound=round(bound))
             # Terminate if an optimal solution is found
-            if self.sense == GRB.MAXIMIZE and res['obj_bd'] - EPSN < r.x or self.sense == GRB.MINIMIZE and res['obj_bd'] + EPSN > r.x:
+            if res is None:
                 best_obj, best_sol, best_ite = self.lb, sol, ite_num
                 best_time = self.timelimit - time_remain + model._ttb
                 print("#ite = {},\tbound = {},\tobj = {},\ttime = {:.3f}".format(best_ite, self.lb, best_obj, best_time))
@@ -394,13 +396,14 @@ class Model():
             self.ttb = model._ttb
             self.sol = {j: 1 if x[j].x > 0.5 else 0 for j in x}
             # Evaluate the obtained solution under its worst-case scenario
-            self.objval = self.evaluate(self.sol)
+            self.objval = self.evaluate(sol=self.sol)
 
-    def evaluate(self, sol: dict) -> int:
+    def evaluate(self, sol: dict, incumbent=None) -> int:
         """Calculate regret for a solution
 
         Args:
             sol (dict): given solution
+            bound (double, optional): initial bound of the regret. 
 
         Returns:
             int: regret value
@@ -412,19 +415,27 @@ class Model():
             c_wst = {j: self.c_low[j] if sol[j] < 0.5 else self.c_upp[j] for j in self.c_upp}
         # Calculate the regret for the given solution
         val_sol = sum(c_wst[j] * sol[j] for j in self.c_upp)
-        res_bst = self.solve_bip(c=c_wst)
+        if incumbent is not None:
+            obj_stop = val_sol + incumbent - EPSN if self.sense == GRB.MAXIMIZE else val_sol - incumbent + EPSN
+            res_bst = self.solve_bip(c=c_wst, obj_stop=obj_stop)
+        else:
+            res_bst = self.solve_bip(c=c_wst)
+        if res_bst is None:
+            return None
         if self.sense == GRB.MAXIMIZE:
             regret = int(res_bst['obj_bd'] - val_sol + 0.5)
         else:
             regret = int(val_sol - res_bst['obj_bd'] + 0.5)
         return regret
     
-    def solve_bip(self, c: dict, timelimit: int=0) -> dict:
+    def solve_bip(self, c: dict, timelimit: int=0, bound=None, obj_stop=None) -> dict:
         """Solve BIP by using GUROBI
 
         Args:
             c (dict): coefficients of objective function
             timelimit (int, optional): time limit. No limits if leave it as default value 0.
+            bound (double, optional): initial bound of the optimal value. 
+            obj_stop (double, optional): objective value to stop optimization. 
 
         Returns:
             dict: results including
@@ -439,7 +450,13 @@ class Model():
         x = {j: model.addVar(vtype=GRB.BINARY, name='x[{}]'.format(j)) for j in c}
         model.update()
         # Objective function
-        model.setObjective(gp.quicksum(c[j] * x[j] for j in x), self.sense)
+        obj = gp.quicksum(c[j] * x[j] for j in x)
+        model.setObjective(obj, self.sense)
+        if bound is not None:
+            if self.sense == GRB.MAXIMIZE:
+                model.addConstr(obj >= bound, name='CON_BND')
+            else:
+                model.addConstr(obj <= bound, name='CON_BND')
         # Add constraints
         model.addConstrs((gp.quicksum(self.a[i,j] * x[j] for j in x) <= self.b[i] for i in range(self.m)), name='CON')
         # Parameter setting
@@ -449,16 +466,19 @@ class Model():
         model.Params.lazyConstraints = 1
         if timelimit:
             model.Params.timeLimit = timelimit
+        if obj_stop is not None:
+            model.Params.BestObjStop = obj_stop
         # Use GUROBI to optimize
         model.optimize(mipsol)
         # Store results
         res = None
-        if model.status == GRB.Status.OPTIMAL or model.status == GRB.Status.TIME_LIMIT:
+        if model.status in {GRB.Status.OPTIMAL, GRB.Status.TIME_LIMIT, GRB.Status.USER_OBJ_LIMIT}:
             res = {'obj_bd': model.objBound,
                    'obj_val': model.objVal,
                    'ttb': model._ttb,
                    'sol': {j: 1 if x[j].x > 0.5 else 0 for j in x}
                   }
+            
         return res
 
     def set_ds_model(self, timelimit: int=0) -> tuple:
